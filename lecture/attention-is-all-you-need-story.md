@@ -63,6 +63,111 @@ Hold onto both curses; the whole paper is the answer to them.
 > token n, lighting one node per frame while a counter ticks `1, 2, …, n`. Keep this on the
 > shelf; you will replay it in Act 3 with one direct edge and the counter stuck at `1`.
 
+### 1.1 Inside the encoder RNN — how the computation actually runs
+
+Give the audience the mechanism before the complaint. Order: ingredients → one cell → unrolled in time → why early words fade.
+
+**Ingredients.** Each token is looked up in a learned embedding matrix, so `x_1 = e(Take)`,
+`x_2 = e(the)`, `x_3 = e(L)`, each a vector of, say, 512 numbers.
+
+**One cell: two inputs, one output.** The RNN is a single function. In comes the current word
+vector `x_t` and the previous state `h_{t-1}`; out goes the new state `h_t`.
+
+```
+h_t = tanh( W_x · x_t  +  W_h · h_{t-1}  +  b )
+```
+
+- `W_x` (state × embed, e.g. 1000×512): projects the word into state space.
+- `W_h` (state × state, e.g. 1000×1000): remixes the previous memory.
+- `b`: bias. `tanh`: squashes every entry into (−1, 1).
+
+The addition is the important part. Previous memory and current word land in the **same** 1000
+slots, summed, so afterwards no slot can say which word it came from.
+
+**Unrolled in time: one cell, reused.**
+
+```
+h_0 = 0
+h_1 = tanh(W_x·x_Take + W_h·h_0 + b)
+h_2 = tanh(W_x·x_the  + W_h·h_1 + b)
+h_3 = tanh(W_x·x_L    + W_h·h_2 + b)
+```
+
+All three steps use the *same* `W_x, W_h, b`. There is one set of weights; only time advances.
+Drawn compactly it is a box with an arrow looping back into itself; unrolled it is the same box
+repeated once per word. A 40‑word sentence gives 40 boxes and still one weight set. This is why an
+RNN handles variable‑length input, and also the root of the problem. The decoder receives `h_3`
+and nothing else: `h_1` and `h_2` are computed and discarded. The decoder is a cell of the same
+shape whose input `x_t` is its own previous output word; a linear layer + softmax on its state
+gives the next‑word distribution.
+
+**A 2‑D toy run (slide‑sized).**
+
+```
+W_x = [[1, 0], [0, 1]]     W_h = [[0.5, 0], [0, 0.5]]     b = 0
+x_Take = [1, 0]    x_the = [0, 1]    x_L = [1, 1]
+
+h_1 = tanh([1, 0] + 0.5·[0, 0])        = tanh([1.00, 0.00]) ≈ [0.76, 0.00]
+h_2 = tanh([0, 1] + 0.5·[0.76, 0])     = tanh([0.38, 1.00]) ≈ [0.36, 0.76]
+h_3 = tanh([1, 1] + 0.5·[0.36, 0.76])  = tanh([1.18, 1.38]) ≈ [0.83, 0.88]
+```
+
+Follow the trace of `Take`: 0.76 → 0.36 → 0.18, halved at every step. Here that is because `W_h`
+is 0.5; in general the repeated multiplication by `W_h` plus tanh saturation does the same job.
+
+**Why early words fade, in two layers.**
+
+- *Forward view.* The contribution of `x_1` to `h_t` has passed through `W_h` t times. If the
+  eigenvalues of `W_h` are below 1 it decays exponentially; if above 1 it blows up and tanh
+  saturates, smearing the information. Either way a distant word survives only as a trace.
+- *Training view.* To push the decoder's error back to `x_1` you multiply `∂h_t/∂h_{t-1}` t times.
+  Each factor is `W_hᵀ · diag(tanh′)` with `tanh′ ≤ 1`, so the product shrinks exponentially:
+  vanishing gradients. The model never even gets the chance to *learn* to remember early words.
+
+**What the LSTM fixed and what it did not.** The LSTM splits the state into an exposed `h_t`
+and a cell state `c_t` guarded by multiplicative gates:
+
+```
+c_t = f_t ⊙ c_{t-1} + i_t ⊙ (candidate)
+```
+
+With a forget gate `f_t` near 1, old memory passes through almost untouched, so overwrite becomes
+*selective keep*, and the gradient flows along `f_t` fairly intact. But `c_t` is still one
+fixed‑size vector, the decoder still receives only the last state, and the steps are still strictly
+sequential. Capacity per word still shrinks as the sentence grows.
+
+**Script paragraph (Korean, for this beat).**
+
+> 인코더 RNN은 셀 하나입니다. 들어오는 건 두 개, 지금 읽는 단어의 벡터와 바로 직전의 기억 벡터입니다.
+> 셀은 두 개를 각자 행렬로 변환해서 더하고, tanh로 눌러서 새 기억 벡터를 내놓습니다. 이 셀을 단어 수만큼
+> 반복해서 쓰는데, 가중치는 처음부터 끝까지 한 세트입니다. 여기서 두 가지가 결정됩니다. 첫째, 이전 기억과
+> 새 단어가 같은 슬롯에 더해지기 때문에 분리가 안 됩니다. 둘째, 첫 단어의 흔적은 `W_h`를 마흔 번 통과한
+> 뒤에나 마지막 벡터에 남습니다. 숫자로 따라가 보면 한 단계마다 깎여 나가는 걸 눈으로 볼 수 있습니다.
+> LSTM이 게이트로 이걸 완화하긴 했지만, 벡터 하나에 담아 넘긴다는 설계와 한 칸씩 직렬로 간다는 설계는
+> 그대로였습니다.
+
+> **Animation A1b — Inside the cell.** Zoom on one cell: arrows `x_t` and `h_{t-1}` enter, each
+> passes through a matrix box, they meet at a `+` node, pass a tanh curve, and exit as `h_t`. The
+> output loops back into the next cell's `h_{t-1}` slot; then the camera pulls out to the unrolled
+> row. Paint `Take`'s contribution red and shrink the red area by half at every box while the
+> numbers 0.76 → 0.36 → 0.18 tick beside it. End with `h_1 … h_{T-1}` cooling to grey and only
+> `h_T` getting an exit arrow to the decoder.
+
+### 1.2 Notes on the Act 1 script (Korean draft review)
+
+- Say the state is **overwritten** each step, not that embeddings are "multiplied into" `h_0`.
+- "The whole sentence becomes one vector" is the bottleneck, not a feature: state explicitly
+  that the decoder receives only `h_T` and the intermediate states are thrown away.
+- Keep the two curses separate: fading of early words comes from fixed‑size overwrite and
+  vanishing gradients; sequential computation is a *speed* problem. The Transformer fixes both,
+  and the payoff in Act 3 is bigger if they were named separately.
+- "Take the L" is an idiom, so a literal translation is wrong; frame it as "structurally trivial,
+  meaning explained by the next sentence", which also bridges to the `it` example.
+- "2014년에 처음" → "본격적으로" (Kalchbrenner & Blunsom 2013 came first).
+- The `it` → `L` distance is ~15 tokens; LSTMs really broke down past 30–40 words. Say
+  "starts to wobble here, clearly breaks when longer", and claim "may lose the referent" rather
+  than "mistranslates".
+
 ---
 
 ## Act 2 — The glance (2014–2016)
