@@ -108,6 +108,15 @@ push({kicker:"Act 2", title:"Bahdanau 2014: 모든 상태를 남겨 두고 돌�
   <div class="callout">그래도 모두가 믿던 것: attention은 <b>RNN에 붙인 패치</b>다. Google의 GNMT(2016)도 8층 LSTM + attention.</div>`,
   notes:`Bahdanau, Cho, Bengio (ICLR 2015). 점수 함수는 작은 feed-forward net("additive attention"). Luong et al. 2015는 디코더-인코더 상태의 내적("multiplicative")이 더 싸고 충분함을 보였다. 여전히 recurrence가 모델이고 attention은 뒤를 흘끗 보는 장치였다. 직렬 계산이라는 저주는 손대지 않았다.`});
 
+push({kicker:"Act 2", title:"흘끗 보기, 매 단계 전부: 학습된 4차원 모델의 실제 숫자", video:"A03bGlanceChain",
+  html:`<p>손으로 고른 숫자가 아닙니다. 9개의 영→독 문장 쌍으로 학습한 4차원 모델의 상태와 가중치를 그대로 보여 줍니다.</p>
+  <ul><li>위: 인코더 상태 <span class="k">h₁…h₅</span>, 단어마다 하나씩 보관.</li>
+  <li>아래: 디코더 상태 <span class="q">s₀ → s₁ → … → s₅</span>. 매 단계 (1) s_{t-1}로 모든 h_j에 점수 → (2) softmax → (3) 문맥 <span class="v">c_t = Σ α_j h_j</span> → (4) <span class="f">s_t = tanh(W_s s_{t-1} + W_y y_{t-1} + W_c c_t)</span> → 단어 출력.</li>
+  <li>s는 "지금 어떤 종류의 단어가 필요한가"(문법·위치)를, c는 "소스의 그 자리에 무엇이 있는가"(내용)를 담는다.</li>
+  <li><b>bridge 테스트</b>: s₄는 그대로 두고 소스 명사만 바꾸면 α가 bridge로 옮겨 가고 출력이 Brücke로 바뀐다. s 혼자서는 둘을 구분할 수 없다.</li></ul>`,
+  notes:`"s가 이미 Straße를 낼 줄 아는데 왜 context가 필요한가?"라는 질문에 대한 답이 이 장면입니다. s_0는 학습된 상수이고(h_T로 초기화하지 않음), 인코더 상태는 단어별 벡터(재귀 없음)라서 소스의 모든 정보는 attention을 통해서만 디코더에 들어옵니다. 그래서 명사를 내는 2단계와 5단계에서 α가 해당 위치에 몰리고, das/überquerte/die처럼 소스를 볼 필요가 없는 단계에서는 α가 퍼집니다. 이것 자체가 교훈입니다: attention은 "내용이 필요할 때만" 날카로워집니다.
+모델: lecture/manim/tiny_nmt.py. d=4, 약 230개 파라미터, 수치 미분 + Adam으로 학습, 9/9 정확. 숫자는 lecture/manim/tiny_nmt.json에 저장되어 애니메이션이 그대로 읽습니다.`});
+
 push({kicker:"Act 2", title:"단어 1에서 단어 n까지: 경로 길이 비교", video:"A04ThreeWays",
   html:`<table><tr><th></th><th>층당 연산</th><th>순차 단계</th><th>최대 경로</th></tr>
   <tr><td>RNN</td><td>O(n·d²)</td><td>O(n)</td><td>O(n)</td></tr>

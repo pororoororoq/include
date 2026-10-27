@@ -934,3 +934,117 @@ class A16Morph(Scene):
         more.next_to(dec, UP, buff=0.05)
         self.play(LaggedStart(*[FadeIn(m, shift=UP * 0.2) for m in more], lag_ratio=0.1, run_time=2.5))
         self.wait(1.5)
+
+
+# ================================================= A3b  The glance, full chain (numbers from tiny_nmt.json)
+import json as _json
+from pathlib import Path as _Path
+
+def _load_trace():
+    f = _Path(__file__).with_name("tiny_nmt.json")
+    return _json.loads(f.read_text(encoding="utf-8")) if f.exists() else None
+
+
+def vec_strip(values, cell_w=0.46, cell_h=0.27, font_size=12, vertical=True, lo=-1, hi=1):
+    """A small heat strip for a vector, with the numbers written in each cell."""
+    cells = VGroup()
+    for v in values:
+        a = (float(v) - lo) / (hi - lo)
+        sq = Rectangle(width=cell_w, height=cell_h).set_stroke(GREY_D, 0.6).set_fill(interpolate_color(BLUE_E, YELLOW, float(np.clip(a, 0, 1))), 1)
+        t = Text(f"{float(v):+.1f}", font_size=font_size, color=BLACK if a > 0.55 else WHITE).move_to(sq)
+        cells.add(VGroup(sq, t))
+    return cells.arrange(DOWN if vertical else RIGHT, buff=0)
+
+
+class A03bGlanceChain(Scene):
+    """Every decoder step of a trained 4-dim attention model: score → softmax → context → new state → word."""
+
+    def construct(self):
+        tr = _load_trace()
+        assert tr is not None, "run tiny_nmt.py first"
+        demo, alt = tr["demo"], tr["bridge"]
+        src = demo["src"]; H = np.array(demo["H"]); steps = demo["steps"]
+        head = title("The glance, every step: a trained 4-dim model, real numbers", font_size=30)
+        self.play(FadeIn(head))
+
+        def caption(txt, color, y=0.45):
+            t = Text(txt, font_size=16, color=color).move_to([0, y, 0])
+            return VGroup(BackgroundRectangle(t, color=config.background_color, fill_opacity=0.9, buff=0.08), t)
+
+        # ---- encoder table (top)
+        toks = token_row(src, buff=0.9, w=1.15, h=0.5, font_size=22).shift(UP * 2.65 + RIGHT * 0.4)
+        hs = VGroup(*[vec_strip(H[j]).next_to(toks[j], DOWN, buff=0.12) for j in range(5)])
+        hl = VGroup(*[Text(f"h{j+1}", font_size=14, color=K_COL).next_to(hs[j], LEFT, buff=0.05) for j in range(5)])
+        enc_lab = Text("encoder states (kept, one per word)", font_size=16, color=K_COL).next_to(toks, UP, buff=0.12)
+        self.play(FadeIn(toks), FadeIn(hs), FadeIn(hl), FadeIn(enc_lab))
+
+        # ---- decoder chain (bottom)
+        s_x = np.linspace(-4.9, 5.9, 6)
+        s_y = -2.6
+        s_strips = [vec_strip(demo["s0"]).move_to([s_x[0], s_y, 0])]
+        s_labels = [Text("s0", font_size=14, color=Q_COL).next_to(s_strips[0], DOWN, buff=0.08)]
+        dec_lab = Text("decoder\nstates", font_size=14, color=Q_COL, line_spacing=0.8).next_to(s_strips[0], LEFT, buff=0.15)
+        self.play(FadeIn(s_strips[0]), FadeIn(s_labels[0]), FadeIn(dec_lab))
+
+        score_row = None
+        for st in steps:
+            t = st["t"]; fast = 1.0 if t == 1 else 0.45
+            s_prev = s_strips[t - 1]
+            # 1. score: lines from s_{t-1} to each h_j, scores written under the strips
+            scores = np.array(st["scores"]); alpha = np.array(st["alpha"])
+            lines = VGroup(*[DashedLine(s_prev.get_top(), hs[j].get_bottom(), dash_length=0.1, stroke_width=1.2, color=DIM) for j in range(5)])
+            new_scores = VGroup(*[Text(f"e={scores[j]:+.1f}", font_size=12, color=YELLOW).next_to(hs[j], DOWN, buff=0.06) for j in range(5)])
+            cap = caption(f"step {t}: score s{t-1} against every h_j", YELLOW)
+            anims = [Create(lines), FadeIn(cap)]
+            anims += [Transform(score_row, new_scores)] if score_row is not None else [FadeIn(new_scores)]
+            self.play(*anims, run_time=0.9 * fast)
+            if score_row is None:
+                score_row = new_scores
+            # 2. softmax: numbers become weights, lines thicken
+            new_alpha = VGroup(*[Text(f"α={alpha[j]:.2f}", font_size=12, color=heat(alpha[j] + 0.15)).move_to(score_row[j]) for j in range(5)])
+            cap2 = caption("softmax → weights (sum 1.00)", RED_C)
+            self.play(Transform(score_row, new_alpha), Transform(cap, cap2),
+                      *[lines[j].animate.set_stroke(width=1 + 7 * alpha[j], color=interpolate_color(DIM, RED_C, alpha[j])) for j in range(5)],
+                      run_time=0.8 * fast)
+            # 3. context: weighted copies of h_j collapse into c_t
+            c_strip = vec_strip(st["context"]).move_to([s_x[t], -0.8, 0])
+            c_lab = Text(f"c{t}", font_size=14, color=V_COL).next_to(c_strip, LEFT, buff=0.05)
+            copies = VGroup(*[hs[j].copy().set_opacity(0.2 + 0.8 * alpha[j]) for j in range(5)])
+            cap3 = caption(f"context c{t} = Σ α_j h_j", V_COL)
+            self.play(*[c.animate.move_to(c_strip).scale(0.3 + 0.7 * alpha[j]) for j, c in enumerate(copies)], Transform(cap, cap3), run_time=0.8 * fast)
+            self.play(FadeOut(copies), FadeIn(c_strip), FadeIn(c_lab), run_time=0.3 * fast)
+            # 4. new state and emitted word
+            s_new = vec_strip(st["s_new"]).move_to([s_x[t], s_y, 0])
+            s_lab = Text(f"s{t}", font_size=14, color=Q_COL).next_to(s_new, DOWN, buff=0.08)
+            a_s = Arrow(s_prev.get_right(), s_new.get_left(), buff=0.05, color=Q_COL, stroke_width=2, tip_length=0.15)
+            a_c = Arrow(c_strip.get_bottom(), s_new.get_top(), buff=0.05, color=V_COL, stroke_width=2, tip_length=0.15)
+            y_prev = Text(f"y{t-1}={st['y_prev']}", font_size=11, color=TOK_COL).next_to(a_s, DOWN, buff=0.03)
+            p = max(st["probs"])
+            word = Text(f"{st['pred']} ({p:.2f})", font_size=15, color=V_COL).next_to(s_lab, DOWN, buff=0.08)
+            cap4 = caption(f"s{t} = tanh(W_s s{t-1} + W_y y{t-1} + W_c c{t}) → '{st['pred']}'", Q_COL)
+            self.play(GrowArrow(a_s), GrowArrow(a_c), FadeIn(y_prev), FadeIn(s_new), FadeIn(s_lab), Transform(cap, cap4), run_time=0.8 * fast)
+            self.play(FadeIn(word, shift=UP * 0.15), run_time=0.4 * fast)
+            s_strips.append(s_new); s_labels.append(s_lab)
+            self.play(FadeOut(lines), FadeOut(cap), run_time=0.3 * fast)
+
+        self.wait(0.6)
+        # ---- the bridge test: same s4, different source word → different output
+        note = caption("same decoder state s4, swap the source noun", YELLOW)
+        new_tok = token("bridge", w=1.15, h=0.5, font_size=22).move_to(toks[4])
+        new_h = vec_strip(np.array(alt["H"])[4]).move_to(hs[4])
+        self.play(FadeIn(note), Transform(toks[4], new_tok), Transform(hs[4], new_h))
+        st = alt["steps"][-1]; alpha = np.array(st["alpha"])
+        s_prev = s_strips[4]
+        lines = VGroup(*[DashedLine(s_prev.get_top(), hs[j].get_bottom(), dash_length=0.1, stroke_width=1 + 7 * alpha[j],
+                                    color=interpolate_color(DIM, RED_C, alpha[j])) for j in range(5)])
+        new_alpha = VGroup(*[Text(f"α={alpha[j]:.2f}", font_size=12, color=heat(alpha[j] + 0.15)).move_to(score_row[j]) for j in range(5)])
+        self.play(Create(lines), Transform(score_row, new_alpha), run_time=0.8)
+        c5 = vec_strip(st["context"]).move_to([s_x[5], -0.8, 0])
+        s5 = vec_strip(st["s_new"]).move_to([s_x[5], s_y, 0])
+        word = Text(f"{st['pred']} ({max(st['probs']):.2f})", font_size=15, color=YELLOW).next_to(s_labels[5], DOWN, buff=0.08)
+        old_word = [m for m in self.mobjects if isinstance(m, Text) and m.text.startswith("straße")]
+        c5_old = [m for m in self.mobjects if isinstance(m, VGroup) and len(m) == 4 and np.allclose(m.get_center()[:2], [s_x[5], -0.8], atol=0.05)]
+        self.play(Transform(s_strips[5], s5), *[Transform(m, word) for m in old_word], *[Transform(m, c5) for m in c5_old], run_time=0.8)
+        note2 = caption("s4 alone could not tell Straße from Brücke; the context could", GREEN_C, y=0.1)
+        self.play(FadeIn(note2))
+        self.wait(2)

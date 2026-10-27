@@ -204,6 +204,46 @@ listed in random order with a footnote that everyone contributed equally.
 > `street` becomes thick and the rest fade. Then the weighted encoder vectors slide together
 > and sum into one context vector that feeds the decoder.
 
+### 2.1 The glance as explicit arithmetic (and where the decoder state comes from)
+
+Four steps per output word. Encoder states `h_1 … h_T` are kept as a table; `s` is the decoder's
+own RNN state.
+
+1. **Score** every encoder state against the current decoder state: `e_j = score(s, h_j)`.
+   Bahdanau used a tiny net, `vᵀ tanh(W s + U h_j)`; Luong showed a (bilinear) dot product is enough.
+2. **Normalise**: `α = softmax(e)`, five positive weights summing to one.
+3. **Blend**: `c = Σ_j α_j h_j`, a fresh summary of the source built for this step only.
+4. **Update and emit**: `s_new = tanh(W_s s + W_y embed(y_prev) + W_c c + b)`, then
+   `p(next word) = softmax(W_out s_new)`.
+
+Two questions a careful listener will ask, with the answers:
+
+- *If `s` already "knows" it is about to say Straße, why add the context?* It does not know.
+  `s` carries the target‑side situation ("noun slot, feminine, after a motion verb"); the
+  content that fills the slot (street vs bridge vs border) can only come from the source, and
+  the context is the source's vote at this step. Test: translate "the animal crossed the
+  bridge"; `s_4` is essentially identical, only `c_5` changes, and the output flips to Brücke.
+- *Where does `s` come from?* From the recursion above, applied once per emitted word:
+  `s_0` is a start state, `s_1 = f(s_0, "<s>", c_1)`, `s_2 = f(s_1, "das", c_2)`, and so on.
+  Nobody picks its numbers; they are whatever the learned matrices produce.
+
+**A real trace, not hand‑picked numbers.** `lecture/manim/tiny_nmt.py` trains a 4‑dimensional
+attention encoder‑decoder (≈230 parameters, numerical gradients + Adam) on nine pairs of the
+form "the ⟨subj⟩ crossed the ⟨obj⟩" → "das ⟨Subj⟩ überquerte die ⟨Obj⟩". Two deliberate choices
+make the demo honest: the start state `s_0` is a learned constant rather than a copy of `h_T`,
+and the encoder states are per‑word vectors rather than a left‑to‑right RNN. Both close the side
+channels through which the decoder could get source content *without* attending, so every
+alignment you see is one the model needed. The full trace (scores, weights, contexts, states,
+output probabilities for every step, plus the bridge variant) is saved to `tiny_nmt.json` and
+the animation reads it directly.
+
+> **Animation A3b — The glance, every step.** Top: the five encoder strips. Bottom: `s_0`
+> appears; for each step, dashed lines from `s_{t-1}` to every `h_j` carry the scores, the
+> numbers turn into softmax weights as the lines thicken, weighted copies of the strips collapse
+> into `c_t`, and `s_t` is drawn from `s_{t-1}`, `y_{t-1}` and `c_t` with the emitted word above
+> it. Step 1 runs slowly, steps 2–5 faster. Finale: swap "street" for "bridge", keep `s_4`,
+> and watch the weights and the output move.
+
 > **Animation A4 — Three ways to connect word 1 to word n.** Three rows of tokens:
 > RNN (chain, path n), Conv (tree of width‑3 kernels, path log₃n), Attention (one edge, path 1).
 > Animate the path on all three simultaneously with a counter per row. This is Table 1 of the
