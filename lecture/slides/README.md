@@ -12,8 +12,7 @@ The videos in `media/` are rendered from `../manim/scenes.py` with `../manim/ren
 
 ## Exported images
 
-- `export/` — all 56 slides as 1920×1080 PNGs; animation slides show the clip's final frame.
-- `export-blank/` — the same 56 slides, but each animation slide has an empty dashed box naming the clip
-  to drop in (`media/<Scene>.mp4`). Use this set when rebuilding the deck in Keynote / PowerPoint / Google Slides.
+- `export/` — all 56 slides as 1920×1080 PNGs. Each animation slide has an empty dashed box naming the clip
+  to drop in (`media/<Scene>.mp4`), so the folder can be imported in order into Keynote / PowerPoint / Google Slides.
 - `figures/` — the nine static figures as PNG and SVG.
 - `media/` — the 18 animation clips (720p H.264, silent). Slide 55 lists where each one goes.
