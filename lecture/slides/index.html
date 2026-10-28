@@ -19,6 +19,8 @@
   .body.noscript{grid-template-columns:1fr}
   .media{background:#0e1116;border-radius:14px;overflow:hidden;display:flex;align-items:center;justify-content:center;min-height:0;border:1px solid #232a36}
   .media video{width:100%;height:100%;object-fit:contain;cursor:pointer;display:block}
+  .media.fig{background:var(--bg);border-color:#1c2330;padding:1vh}
+  .media.fig svg text{font-family:inherit}
   .media .ph{color:var(--dim);font-size:1.8vh;padding:2vh;text-align:center}
   .script{font-size:2.1vh;line-height:1.55;overflow:auto;min-height:0;padding-right:.5vw}
   .script ul{margin:.4vh 0 0 1.1em;padding:0}
@@ -56,7 +58,10 @@
 <div id="hud"><button id="loopBtn" title="loop video (L)">loop</button><button id="notesBtn" title="speaker notes (N)">notes</button><span id="counter"></span></div>
 <div id="notes"><h3>Speaker notes</h3><div id="notesBody"></div></div>
 
+<script src="figures.js"></script>
 <script>
+const ALIGN = {"A": [[0.22792182609392167, 0.14009977832259513, 0.39145283253551266, 0.22792182609392167, 0.012603736954048804], [0.0006934511671618324, 0.9966920384598472, 0.0014916842154295252, 0.0006934511671618324, 0.0004293749903995221], [0.4423208278970158, 0.008642519518943705, 0.03231271271338868, 0.4423208278970158, 0.07440311197363583], [0.47169673898389236, 9.193744219093967e-06, 0.01917790639704404, 0.47169673898389236, 0.0374194218909521], [0.003140369361642876, 3.6646927969754486e-05, 0.0022482008753520063, 0.003140369361642876, 0.9914344134733926]], "B": [[0.22804574177724865, 0.1401759472444677, 0.39166565614291005, 0.22804574177724865, 0.012066913058124983], [0.0006798804572193907, 0.997133560135386, 0.0014763115082927062, 0.0006798804572193907, 3.0367441882403693e-05], [0.11933254194291443, 0.00233172627680667, 0.008717560600584102, 0.11933254194291443, 0.7502856292367804], [0.012004422434406723, 2.0363630735136138e-07, 0.0004654729598860125, 0.012004422434406723, 0.9755254785349932], [0.0011865899524909239, 1.3600936070526336e-05, 0.0008471307389605333, 0.0011865899524909239, 0.996766088419987]], "src": ["the", "animal", "crossed", "the", "street"], "srcAlt": ["the", "animal", "crossed", "the", "bridge"], "tgt": ["das", "tier", "\u00fcberquerte", "die", "stra\u00dfe"]};
+FIG.alignmentSvg = FIG.alignment(ALIGN.A, ALIGN.B, ALIGN.src, ALIGN.srcAlt, ALIGN.tgt);
 // ---------------------------------------------------------------- slide data
 // video: file under ./media (rendered by lecture/manim/render.sh)
 const S = [];
@@ -100,6 +105,20 @@ push({kicker:"Act 1", title:"정보는 한 번에 한 칸만 이동한다", vide
 
 push({type:"section", kicker:"Act 2 · 8–15분", title:"뒤돌아보기", sub:"2014–2016. Attention은 RNN에 붙인 목발로 태어났다. 그리고 누군가 위험한 질문을 던졌다."});
 
+push({kicker:"Act 2", title:"2013–2020: attention은 목발로 태어났다", fig:"timeline",
+  html:`<ul><li>2013–14: 신경망 번역이 시작되고, 문장은 벡터 하나로 압축된다.</li>
+  <li>2014–15: <span class="k">attention</span>이 RNN의 보조 장치로 등장. Bahdanau는 작은 신경망으로, Luong은 내적으로 점수를 낸다.</li>
+  <li>2016–17: GNMT는 LSTM+attention으로 실서비스. ByteNet, ConvS2S는 convolution으로 병렬화를 시도.</li>
+  <li><span class="acc">2017.6</span>: 목발만 남기고 RNN을 버린 논문.</li></ul>`,
+  notes:`시간순으로 한 번 정리해 주는 정지 화면. 주황 점 두 개가 2막, 노란 점이 3막, 파랑·초록이 4막이라고 짚어 주면 청중이 지도를 갖게 됩니다.`});
+
+push({kicker:"Act 1 → Act 2", title:"벡터 하나 대 표 하나", fig:"bottleneck",
+  html:`<p>왼쪽이 1막, 오른쪽이 2막입니다. 바뀐 것은 단 하나, <b>중간 상태를 버리느냐 보관하느냐</b>.</p>
+  <ul><li>보관하면 용량이 문장 길이에 비례해 늘어난다. 고정 상자가 없다.</li>
+  <li>디코더가 매 단계 표를 새로 읽으므로, 어느 소스 단어든 한 번의 가중 연결로 닿는다.</li>
+  <li>점선 두께가 softmax 가중치. 합은 항상 1.00.</li></ul>`,
+  notes:`애니메이션 사이에 숨 고르는 정지 화면. "무엇이 달라졌나"를 한 문장으로 못 박는 용도.`});
+
 push({kicker:"Act 2", title:"Bahdanau 2014: 모든 상태를 남겨 두고 돌아본다", video:"A03Glance",
   html:`<ul><li>마지막 상태만 쓰지 말고 <span class="k">h_1 … h_T</span>를 전부 표처럼 보관.</li>
   <li>디코더가 매 단계 각 행에 점수를 매기고, softmax로 가중치를 만들어 <span class="v">가중합</span>을 읽는다.</li>
@@ -117,6 +136,14 @@ push({kicker:"Act 2", title:"흘끗 보기, 매 단계 전부: 학습된 4차원
   notes:`"s가 이미 Straße를 낼 줄 아는데 왜 context가 필요한가?"라는 질문에 대한 답이 이 장면입니다. s_0는 학습된 상수이고(h_T로 초기화하지 않음), 인코더 상태는 단어별 벡터(재귀 없음)라서 소스의 모든 정보는 attention을 통해서만 디코더에 들어옵니다. 그래서 명사를 내는 2단계와 5단계에서 α가 해당 위치에 몰리고, das/überquerte/die처럼 소스를 볼 필요가 없는 단계에서는 α가 퍼집니다. 이것 자체가 교훈입니다: attention은 "내용이 필요할 때만" 날카로워집니다.
 모델: lecture/manim/tiny_nmt.py. d=4, 약 230개 파라미터, 수치 미분 + Adam으로 학습, 9/9 정확. 숫자는 lecture/manim/tiny_nmt.json에 저장되어 애니메이션이 그대로 읽습니다.`});
 
+push({kicker:"Act 2", title:"방금 그 모델의 attention map", fig:"alignmentSvg",
+  html:`<p>애니메이션에서 본 α를 표로 모은 것입니다. 행이 출력 단계, 열이 소스 단어, 밝을수록 가중치가 큽니다.</p>
+  <ul><li>2행(tier)과 5행(Straße)만 한 칸에 몰린다. 명사는 소스를 봐야 낼 수 있으니까.</li>
+  <li>1·3·4행은 흩어진다. das, überquerte, die는 문법만으로 나온다.</li>
+  <li>오른쪽 표(bridge)와 비교: 1~4행이 같고 5행만 다르다. <b>디코더 상태가 같으면 문법어는 같고, 내용어만 소스를 따라간다.</b></li></ul>
+  <p class="dim">논문 부록의 attention 시각화(it → animal)는 이 표의 512차원·8 head 버전입니다.</p>`,
+  notes:`정적 heat map. 청중이 애니메이션 속도를 놓쳤을 때 돌아올 수 있는 닻 역할. 여기서 "attention map을 읽는 법"을 한 번 가르쳐 두면 3막의 행렬 장면과 논문 부록 그림이 바로 읽힙니다.`});
+
 push({kicker:"Act 2", title:"단어 1에서 단어 n까지: 경로 길이 비교", video:"A04ThreeWays",
   html:`<table><tr><th></th><th>층당 연산</th><th>순차 단계</th><th>최대 경로</th></tr>
   <tr><td>RNN</td><td>O(n·d²)</td><td>O(n)</td><td>O(n)</td></tr>
@@ -127,6 +154,14 @@ push({kicker:"Act 2", title:"단어 1에서 단어 n까지: 경로 길이 비교
   notes:`논문 Table 1을 시각화한 장면. Self-attention은 이미 존재했다(Cheng 2016 intra-attention, Parikh 2016, Lin 2017). 항상 다른 것과 함께였을 뿐. 동료 대부분은 실패를 예상했다. 제목은 Llion Jones가 제안한 Beatles 농담. 8명의 저자는 무작위 순서, 모두 동등 기여라는 각주.`});
 
 push({type:"section", kicker:"Act 3 · 15–48분", title:"도약", sub:"Self-attention을 부드러운 사전 검색으로 이해하고, multi-head와 위치 정보, 그리고 블록 전체를 조립한다."});
+
+push({kicker:"Act 3 · self-attention", title:"먼저 비유 하나: 도서관 카드 목록", fig:"library",
+  html:`<ul><li><span class="q">query</span>: 내가 들고 간 질문 카드. "내 주어가 누구지?"</li>
+  <li><span class="k">key</span>: 서랍마다 붙은 라벨. "나는 명사다", "나는 관사다".</li>
+  <li><span class="v">value</span>: 서랍 안의 내용물. 라벨과 내용물은 같은 서랍에 있지만 역할이 다르다.</li>
+  <li>질문 카드와 라벨의 궁합으로 예산(α)을 나누고, 그 예산대로 내용물을 조금씩 꺼내 온다.</li></ul>
+  <p class="dim">세 가지 모두 같은 토큰 벡터 x에 서로 다른 행렬을 곱해 만든다: q = xW^Q, k = xW^K, v = xW^V.</p>`,
+  notes:`숫자 애니메이션 전에 개념을 먼저 심는 정지 화면. "왜 key와 value를 따로 두는가"는 여기서 한 번, 그리고 multi-head 뒤에 한 번 더 물어보세요: 찾을 때 쓰는 특징과 꺼내 갈 내용은 다를 수 있기 때문입니다.`});
 
 push({kicker:"Act 3 · self-attention", title:"Attention = 부드러운 검색: 점수 → 정규화 → 혼합", video:"A05SoftLookup",
   html:`<p>모든 토큰이 자기 자신에 대해 세 가지를 씁니다.</p>
@@ -149,6 +184,12 @@ push({kicker:"Act 3 · self-attention", title:"같은 계산을 행렬로: QKᵀ
   <li>격자를 문장 위에 겹치면 단어↔단어 연결선이 된다: 논문 그림에서 <b>it</b>이 <b>animal</b>을 켠다.</li></ul>`,
   notes:`3토큰 예시를 A5, A7, A9, A11에서 반복해 청중이 데이터를 다시 배우지 않게 합니다. 행 합 1.00을 항상 띄워 "가중치는 예산"이라는 감각을 심으세요.`});
 
+push({kicker:"Act 3 · multi-head", title:"논문 Figure 2: 부품 하나, 그리고 여덟 개", fig:"fig2",
+  html:`<ul><li>왼쪽: Scaled Dot-Product Attention. MatMul → ÷√d_k → (mask) → softmax → MatMul. 방금 본 세 단계 그대로.</li>
+  <li>오른쪽: Multi-Head. Q, K, V를 각각 h=8번 선형 투영(512 → 64)해서 왼쪽 부품을 여덟 개 병렬로 돌리고, 이어붙여(512) W^O로 섞는다.</li>
+  <li>mask는 decoder self-attention에서만 켜진다.</li></ul>`,
+  notes:`논문의 그림을 그대로 재현한 정지 화면. 원본 PDF 4쪽 Figure 2를 옆에 띄워도 좋습니다.`});
+
 push({kicker:"Act 3 · multi-head", title:"Multi-head: 폭을 쪼개 8개의 검색을 병렬로", video:"A08MultiHead",
   html:`<p>attention 패턴 하나 = 관계 하나. 그런데 단어는 "주어는 누구?", "나를 꾸미는 건?", "내가 가리키는 건?"을 동시에 묻고 싶다. 하나의 softmax로 평균 내면 모두 흐려진다.</p>
   <ul><li>h = 8개의 작은 W_i^Q, W_i^K, W_i^V 로 512 → 64 차원씩 투영, 각자 attention.</li>
@@ -156,6 +197,13 @@ push({kicker:"Act 3 · multi-head", title:"Multi-head: 폭을 쪼개 8개의 검
   <li><b>비용은 512차원 head 하나와 같다.</b> 폭을 나눈 것이지 곱한 것이 아니다.</li></ul>
   <p class="f">MultiHead = Concat(head_1…head_8)·W^O</p>`,
   notes:`부록 그림: coreference를 따라가는 head(its → Law), 지역 구문을 보는 head, 거의 대각선인 head. Table 3: head 1개는 0.9 BLEU 나쁘고, 32개도 나쁘다 — 너무 작은 head는 용량을 잃는다.`});
+
+push({kicker:"Act 3 · block", title:"논문 Figure 1: attention이 쓰이는 세 자리", fig:"fig1",
+  html:`<ul><li><span class="q">① encoder self-attention</span>: Q, K, V 모두 소스 토큰에서. 소스가 소스를 본다.</li>
+  <li><span class="k">② decoder masked self-attention</span>: 타깃이 자기보다 앞의 타깃만 본다.</li>
+  <li><span class="v">③ encoder-decoder (cross) attention</span>: Q는 디코더 층에서, K·V는 인코더 최종 출력에서. 2막의 흘끗 보기.</li>
+  <li>각 sublayer 뒤에 residual + LayerNorm, 각 층 끝에 position-wise FFN.</li></ul>`,
+  notes:`애니메이션(FullFlow)이 조립하는 동안 말로 설명하기 어렵다면, 이 정지 화면에서 세 자리를 먼저 짚고 애니메이션은 요약으로 트는 순서를 추천합니다.`});
 
 push({kicker:"Act 3 · position", title:"Attention만으로는 단어 주머니(bag of words)", video:"A09ShuffleTest",
   html:`<ul><li>attention 공식에는 토큰이 <b>어디</b> 있는지에 대한 정보가 없다.</li>
@@ -202,6 +250,12 @@ push({kicker:"Act 3b · 증명", title:"학습 레시피와 결과",
   <p class="dim">big은 이전 최고 대비 학습 FLOPs 1/4 미만.</p></div></div>`,
   notes:`En→Fr big 점수는 arXiv 최종판 기준 41.8(초기판 41.0). 청중의 복사본에 따라 다를 수 있음. 학습 비용 비교는 Table 2 하단의 FLOPs 열.`});
 
+push({kicker:"Act 3b · 증명", title:"BLEU: 단일 모델이 ensemble을 이겼다", fig:"results",
+  html:`<ul><li>En→De: big 28.4, 이전 최고(ConvS2S ensemble 26.36) 대비 +2.0. base 27.3도 모든 단일 모델을 이긴다.</li>
+  <li>En→Fr: big 41.8. base 38.1은 뒤처지지만 학습 비용이 한 자릿수 작다.</li>
+  <li>막대 길이 차이가 작아 보여도 BLEU 1점은 당시 1년치 진전이었다.</li></ul>`,
+  notes:`Table 2를 막대로. 주황이 Transformer. En→Fr base가 낮은 이유를 물으면: 36M 쌍 데이터에 100k step은 짧다, big은 300k step.`});
+
 push({kicker:"Act 3b · 증명", title:"층당 비용: n²·d 대 n·d²", video:"A14Complexity",
   html:`<ul><li>self-attention은 <span class="red">n×n</span> 격자에 깊이 d, recurrence는 <span class="q">n×d</span> 사각형에 깊이 d.</li>
   <li>n &lt; d(=512)인 동안은 attention이 더 싸다. 그 뒤로는 n² 격자가 O(1) 경로 길이의 대가.</li>
@@ -222,6 +276,18 @@ push({kicker:"Act 3b · 증명", title:"Ablation (Table 3): 저자들이 배운 
   <div class="callout">일반화: Penn Treebank 구문 분석(40k 문장)에 특별한 조정 없이 적용해 대부분의 기존 파서를 이김 (WSJ-only 91.3 F1, semi-supervised 92.7).</div>`,
   notes:`Table 3 행 (A) heads, (B) d_k, (C) 크기, (D) dropout/label smoothing, (E) positional. 구문 분석 결과는 Table 4.`});
 
+push({kicker:"Act 3b · 증명", title:"Head 수: 1개는 부족하고 32개는 너무 많다", fig:"heads",
+  html:`<ul><li>h=1: 24.9. 관계 하나만 볼 수 있으니 0.9 BLEU 손해.</li>
+  <li>h=8, 16: 25.8. 논문은 8을 택했다.</li>
+  <li>h=32: 25.4. 각 head가 16차원이 되어 query·key 매칭에 쓸 용량이 부족해진다.</li></ul>`,
+  notes:`Table 3 row A. d_model이 512로 고정이라 h를 늘리면 d_k가 줄어든다는 점을 꼭 말하세요. 그래서 "head가 많을수록 좋다"가 아닙니다.`});
+
+push({kicker:"Act 3b · 증명", title:"Base와 Big", fig:"hparams",
+  html:`<ul><li>big은 폭을 두 배로(d_model 1024, d_ff 4096, h 16), d_k는 64로 유지.</li>
+  <li>dropout을 0.3으로 올리고 세 배 오래 학습.</li>
+  <li>파라미터 3.3배, BLEU +1.1 (En→De). "클수록 좋다"의 첫 데이터 포인트.</li></ul>`,
+  notes:`Table 3 마지막 행과 5.1~5.4절 요약.`});
+
 push({type:"section", kicker:"Act 4 · 48–55분", title:"그 이후", sub:"아키텍처는 과제보다 오래 살았다. 번역은 가장 작은 용도였던 것으로 드러났다."});
 
 push({kicker:"Act 4", title:"블록은 과제보다 오래 살았다", video:"A16Morph",
@@ -241,6 +307,20 @@ push({kicker:"Act 4", title:"무엇이 남았고 무엇이 바뀌었나",
   <tr><td></td><td>O(n²) 메모리 → FlashAttention (정확하지만 IO-aware)</td></tr></table>`,
   notes:`마무리 슬라이드. 왼쪽 열이 2017년 그대로라는 점을 강조. 오른쪽 열은 모두 "같은 블록을 더 크게, 더 길게, 더 싸게"를 위한 수정.`});
 
+push({kicker:"부록", title:"원본 논문에서 캡처해 올 그림",
+  html:`<table><tr><th>그림</th><th>위치 (arXiv v7 PDF)</th><th>쓸 자리</th></tr>
+  <tr><td>Figure 1 — 전체 구조</td><td>3쪽</td><td>3막 "세 자리" 슬라이드 옆</td></tr>
+  <tr><td>Figure 2 — Scaled Dot-Product / Multi-Head</td><td>4쪽</td><td>multi-head 앞</td></tr>
+  <tr><td>Table 1 — 복잡도·순차 단계·경로 길이</td><td>6쪽</td><td>2막 경로 길이 비교 뒤</td></tr>
+  <tr><td>Table 2 — BLEU와 학습 비용</td><td>8쪽</td><td>결과 슬라이드</td></tr>
+  <tr><td>Table 3 — ablation</td><td>9쪽</td><td>head 수 차트 옆</td></tr>
+  <tr><td>Figure 3 — "making … more difficult" (장거리 의존)</td><td>13쪽</td><td>행렬 장면 뒤</td></tr>
+  <tr><td>Figure 4 — "its application" (anaphora, head 5·6)</td><td>14쪽</td><td>multi-head 뒤</td></tr>
+  <tr><td>Figure 5 — 문장 구조를 따라가는 head</td><td>15쪽</td><td>multi-head 뒤</td></tr></table>
+  <p class="dim">이 세션에서는 arXiv 접근이 차단되어 원본 그림을 직접 넣지 못했습니다. 위 표대로 캡처해 <span class="f">media/</span>에 넣고 슬라이드에 <span class="f">&lt;img&gt;</span>로 연결하면 됩니다.</p>
+  <p>참고할 만한 외부 시각 자료: Jay Alammar, <i>The Illustrated Transformer</i> · 3Blue1Brown, <i>Attention in transformers, visually explained</i> · Harvard NLP, <i>The Annotated Transformer</i> · BertViz (head별 attention 인터랙티브) · Transformer Explainer (GPT-2 실시간 시각화).</p>`,
+  notes:`발표에는 넣지 않는 작업용 슬라이드.`});
+
 push({type:"section", kicker:"55–60분", title:"Q&A", sub:"두 가지 저주, 부드러운 검색, 쪼갠 폭, 돌아가는 시계, 가려진 미래. 그리고 그 블록을 더 높이 쌓은 10년."});
 
 // ---------------------------------------------------------------- engine
@@ -255,9 +335,9 @@ S.forEach((s, i) => {
   } else {
     const media = s.video
       ? `<div class="media"><video muted playsinline preload="metadata" src="media/${s.video}.mp4" title="${s.video} — click to replay"></video></div>`
-      : "";
+      : s.fig ? `<div class="media fig">${FIG[s.fig]}</div>` : "";
     el.innerHTML = `<div class="kicker">${s.kicker||""}</div><h2>${s.title}</h2>
-      <div class="body ${s.video ? "" : "noscript"}">${media}<div class="script">${s.html||""}</div></div>`;
+      <div class="body ${(s.video || s.fig) ? "" : "noscript"}">${media}<div class="script">${s.html||""}</div></div>`;
   }
   deck.appendChild(el);
 });
