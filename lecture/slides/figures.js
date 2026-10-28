@@ -111,28 +111,37 @@ FIG.fig2 = (() => {
 // ---------------------------------------------------------------- Figure 1 recreated (static)
 FIG.fig1 = (() => {
   let s = svgOpen + defs;
-  const blk = (x, y, w, label, col) => R(x - w / 2, y - 20, w, 40, { stroke: col, sw: 1.5, fill: C.panel }) + T(x, y + 6, label, { size: 15, anchor: "middle", fill: col });
-  // encoder
+  // ordinary blocks are dimmed; the three attention blocks are filled, numbered, and get Q/K/V arrows
+  const blk = (x, y, w, label) => R(x - w / 2, y - 20, w, 40, { stroke: "#3a4254", sw: 1.2, fill: C.panel }) + T(x, y + 6, label, { size: 15, anchor: "middle", fill: "#8b94a7" });
+  const hot = (x, y, w, label, col, num) => R(x - w / 2, y - 22, w, 44, { stroke: col, sw: 2.5, fill: col, extra: 'fill-opacity="0.22"' })
+    + `<circle cx="${x - w / 2 + 2}" cy="${y - 22}" r="15" fill="${col}"/>` + T(x - w / 2 + 2, y - 16, num, { size: 17, anchor: "middle", fill: C.bg, w: 700 })
+    + T(x, y + 7, label, { size: 16, anchor: "middle", fill: col, w: 650 });
+  const qkv = (x, y, labels, col) => labels.map(([dx, t]) => T(x + dx, y, t, { size: 13, anchor: "middle", fill: col, w: 650 })).join("");
   const ex = 380, dx = 860;
-  s += R(ex - 150, 160, 300, 260, { stroke: C.q, sw: 1.5, fill: "rgba(88,196,221,0.04)" }) + T(ex - 140, 150, "Encoder  × 6", { size: 18, fill: C.q, w: 650 });
-  s += blk(ex, 380, 220, "Multi-Head Self-Attention", C.q) + blk(ex, 320, 220, "Add & Norm", C.dim) + blk(ex, 260, 220, "Feed Forward", C.q) + blk(ex, 200, 220, "Add & Norm", C.dim);
-  s += L(ex, 540, ex, 402, { arrow: true }) + L(ex, 180, ex, 120, { arrow: true });
+  // encoder
+  s += R(ex - 150, 160, 300, 260, { stroke: C.q, sw: 1.2, fill: "rgba(88,196,221,0.03)" }) + T(ex - 140, 150, "Encoder  × 6", { size: 18, fill: C.q, w: 650 });
+  s += hot(ex, 380, 230, "Multi-Head Self-Attention", C.q, "1") + blk(ex, 320, 220, "Add & Norm") + blk(ex, 260, 220, "Feed Forward") + blk(ex, 200, 220, "Add & Norm");
+  s += L(ex, 540, ex, 404, { arrow: true }) + L(ex, 180, ex, 120, { arrow: true });
+  s += qkv(ex, 445, [[-40, "Q"], [0, "K"], [40, "V"]], C.q) + T(ex + 60, 445, "all from the source", { size: 12, fill: C.dim });
   s += `<circle cx="${ex}" cy="500" r="16" fill="none" stroke="${C.pos}" stroke-width="2"/>` + T(ex, 506, "+", { size: 20, anchor: "middle", fill: C.pos }) + T(ex - 30, 506, "PE", { size: 15, anchor: "end", fill: C.pos });
   s += R(ex - 90, 560, 180, 40, { stroke: C.fg }) + T(ex, 586, "Input Embedding", { size: 15, anchor: "middle" }) + T(ex, 640, "source tokens", { size: 16, anchor: "middle", fill: C.dim });
   // decoder
-  s += R(dx - 150, 100, 300, 320, { stroke: C.k, sw: 1.5, fill: "rgba(255,134,47,0.04)" }) + T(dx - 140, 90, "Decoder  × 6", { size: 18, fill: C.k, w: 650 });
-  s += blk(dx, 380, 220, "Masked Multi-Head Self-Attn", C.k) + blk(dx, 325, 220, "Add & Norm", C.dim) + blk(dx, 270, 220, "Multi-Head Cross-Attention", C.v) + blk(dx, 215, 220, "Add & Norm", C.dim) + blk(dx, 160, 220, "Feed Forward", C.k) + blk(dx, 120, 220, "Add & Norm", C.dim);
-  s += L(dx, 540, dx, 402, { arrow: true });
+  s += R(dx - 150, 100, 300, 320, { stroke: C.k, sw: 1.2, fill: "rgba(255,134,47,0.03)" }) + T(dx - 140, 90, "Decoder  × 6", { size: 18, fill: C.k, w: 650 });
+  s += hot(dx, 380, 230, "Masked Multi-Head Self-Attn", C.k, "2") + blk(dx, 325, 220, "Add & Norm") + hot(dx, 270, 230, "Multi-Head Cross-Attention", C.v, "3") + blk(dx, 215, 220, "Add & Norm") + blk(dx, 160, 220, "Feed Forward") + blk(dx, 120, 220, "Add & Norm");
+  s += L(dx, 540, dx, 404, { arrow: true });
+  s += qkv(dx, 445, [[-40, "Q"], [0, "K"], [40, "V"]], C.k) + T(dx + 60, 445, "all from the target", { size: 12, fill: C.dim });
+  s += T(dx + 160, 266, "Q from the", { size: 12, fill: C.q }) + T(dx + 160, 282, "decoder stack", { size: 12, fill: C.q });
   s += `<circle cx="${dx}" cy="500" r="16" fill="none" stroke="${C.pos}" stroke-width="2"/>` + T(dx, 506, "+", { size: 20, anchor: "middle", fill: C.pos }) + T(dx + 30, 506, "PE", { size: 15, fill: C.pos });
   s += R(dx - 90, 560, 180, 40, { stroke: C.fg }) + T(dx, 586, "Output Embedding", { size: 15, anchor: "middle" }) + T(dx, 640, "target tokens (shifted right by one)", { size: 16, anchor: "middle", fill: C.dim });
-  // cross arrows encoder -> decoder cross-attn
-  s += `<path d="M ${ex} 120 L ${ex} 60 L ${dx - 260} 60 L ${dx - 260} 270 L ${dx - 112} 270" fill="none" stroke="${C.v}" stroke-width="2" marker-end="url(#arr)"/>` + T(dx - 250, 255, "K, V", { size: 15, fill: C.v });
-  s += T(dx + 125, 292, "Q", { size: 15, fill: C.q });
+  // encoder output -> cross-attention K, V
+  s += `<path d="M ${ex} 120 L ${ex} 60 L ${dx - 260} 60 L ${dx - 260} 270 L ${dx - 117} 270" fill="none" stroke="${C.v}" stroke-width="3" marker-end="url(#arr)"/>`;
+  s += T(dx - 255, 250, "K, V from", { size: 12, fill: C.v, w: 650 }) + T(dx - 255, 265, "the encoder", { size: 12, fill: C.v, w: 650 });
   // output
   s += L(dx, 100, dx, 60, { arrow: true }) + R(dx - 70, 20, 140, 36, { stroke: C.v }) + T(dx, 44, "Linear + Softmax", { size: 14, anchor: "middle", fill: C.v }) + T(dx + 90, 44, "→ next-token probabilities", { size: 15, fill: C.dim });
-  // legend of the three attentions
-  s += T(100, 670, "① encoder self-attn: source looks at source", { size: 15, fill: C.q }) + T(480, 670, "② masked self-attn: target looks only at its past", { size: 15, fill: C.k }) + T(900, 670, "③ cross-attn: Q from decoder, K·V from encoder", { size: 15, fill: C.v });
-  s += T(640, 705, "Figure 1 of the paper, redrawn", { size: 14, anchor: "middle", fill: C.dim });
+  // legend
+  const badge = (x, col, num, txt) => `<circle cx="${x}" cy="664" r="12" fill="${col}"/>` + T(x, 669, num, { size: 14, anchor: "middle", fill: C.bg, w: 700 }) + T(x + 18, 669, txt, { size: 14, fill: col });
+  s += badge(50, C.q, "1", "encoder self-attention: source looks at source") + badge(455, C.k, "2", "masked self-attention: target sees only its past") + badge(870, C.v, "3", "cross-attention: Q from decoder, K·V from encoder");
+  s += T(640, 705, "Figure 1 of the paper, redrawn. Only the three filled blocks are attention; everything else is add & norm or a feed-forward layer.", { size: 14, anchor: "middle", fill: C.dim });
   return s + "</svg>";
 })();
 
