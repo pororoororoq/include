@@ -137,18 +137,18 @@ FIG.fig1 = (() => {
 })();
 
 // ---------------------------------------------------------------- alignment matrix from the trained model
-FIG.alignment = (A, Aalt, src, srcAlt, tgt) => {
+FIG.alignment = (A, Aalt, src, srcAlt, tgt, tgtAlt) => {
   const cell = 64;
-  const grid = (M, x0, y0, cols, title) => {
+  const grid = (M, x0, y0, cols, rows, title) => {
     let g = T(x0 + cols.length * cell / 2, y0 - 70, title, { size: 22, anchor: "middle", w: 650 });
     cols.forEach((w, j) => g += T(x0 + j * cell + cell / 2, y0 - 14, w, { size: 15, anchor: "middle", fill: C.k }));
-    M.forEach((row, i) => { g += T(x0 - 12, y0 + i * cell + cell / 2 + 5, tgt[i], { size: 15, anchor: "end", fill: C.q }); row.forEach((a, j) => { g += R(x0 + j * cell + 1, y0 + i * cell + 1, cell - 2, cell - 2, { rx: 4, fill: heat(a) }) + T(x0 + j * cell + cell / 2, y0 + i * cell + cell / 2 + 5, a.toFixed(2), { size: 13, anchor: "middle", fill: a > 0.5 ? "#fff" : C.dim }); }); });
+    M.forEach((row, i) => { g += T(x0 - 12, y0 + i * cell + cell / 2 + 5, rows[i], { size: 15, anchor: "end", fill: C.q }); row.forEach((a, j) => { g += R(x0 + j * cell + 1, y0 + i * cell + 1, cell - 2, cell - 2, { rx: 4, fill: heat(a) }) + T(x0 + j * cell + cell / 2, y0 + i * cell + cell / 2 + 5, a.toFixed(2), { size: 13, anchor: "middle", fill: a > 0.5 ? "#fff" : C.dim }); }); });
     return g;
   };
   let s = svgOpen + defs + T(640, 50, "학습된 4차원 모델의 attention map (행: 출력 단계, 열: 소스 단어)", { size: 26, anchor: "middle", w: 650 });
-  s += grid(A, 140, 180, src, "the animal crossed the street") + grid(Aalt, 760, 180, srcAlt, "the animal crossed the bridge");
+  s += grid(A, 140, 180, src, tgt, "the animal crossed the street") + grid(Aalt, 760, 180, srcAlt, tgtAlt, "the animal crossed the bridge");
   s += T(640, 600, "명사를 내는 2단계(tier)와 5단계(Straße/Brücke)에서만 날카롭고, 문법어(das, überquerte, die)에서는 흩어진다", { size: 18, anchor: "middle" });
-  s += T(640, 636, "두 표의 1~4행은 같다: 디코더 상태가 같으므로. 5행만 소스 명사를 따라간다", { size: 18, anchor: "middle", fill: C.acc });
+  s += T(640, 636, "디코더 상태는 두 문장에서 거의 같다(최대 차이 0.04). 3·4행의 가중치는 bridge 쪽으로 움직이지만 단어는 그대로. 단어가 바뀌는 건 5행뿐", { size: 17, anchor: "middle", fill: C.acc });
   s += T(640, 690, "논문 부록 Figure 3–5(it → animal 등)가 이것의 512차원·8 head 버전이다", { size: 15, anchor: "middle", fill: C.dim });
   return s + "</svg>";
 };
